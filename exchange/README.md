@@ -97,7 +97,7 @@ In modern personal finance and wealth management, data is often scattered across
 
 ### DevOps and Testing
 - **Containerization:** Docker and Docker Compose
-- **Testing:** Pytest (21 tests; 71% line coverage of the service layer, enforced at 70% in CI)
+- **Testing:** Pytest (22 tests; 71% line coverage of the service layer, enforced at 70% in CI)
 
 ---
 
