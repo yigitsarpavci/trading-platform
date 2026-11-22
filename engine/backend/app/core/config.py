@@ -27,8 +27,12 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.FRONTEND_CORS_ORIGINS.split(",") if o.strip()]
 
     def get_database_url(self) -> str:
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        url = self.DATABASE_URL or (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
+        )
+        # SQLAlchemy 2.1 maps a bare postgresql:// URL to psycopg 3; pin the installed psycopg2 driver.
+        if url.startswith("postgresql://"):
+            url = "postgresql+psycopg2://" + url[len("postgresql://"):]
+        return url
 
 settings = Settings()
