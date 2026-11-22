@@ -66,16 +66,16 @@ cd frontend && npm ci && npm run dev    # http://localhost:3000
 
 ```mermaid
 flowchart LR
-    Web["Next.js app<br/>exchange · finance · bot terminal"] -->|REST + JWT| API
-    Web -. WebSocket .-> API
+    Web["Next.js app (exchange · finance · bot terminal)"] -->|"REST + JWT"| API
+    Web -. "WebSocket" .-> API
     subgraph API["FastAPI (one process)"]
-        Ex["Exchange<br/>matching · settlement · market maker"]
+        Ex["Exchange (matching · settlement · market maker)"]
         Fin["Finance · risk · AI"]
-        Bot["Bot loop<br/>scoring · sizing · exits"]
-        Bot -->|IOC orders, reference prices<br/>(in process)| Ex
+        Bot["Bot loop (scoring · sizing · exits)"]
+        Bot -->|"IOC orders & reference prices (in-process)"| Ex
     end
-    Feed["Synthetic feed /<br/>Yahoo Finance"] --> Bot
-    API --> DB[("PostgreSQL<br/>one schema")]
+    Feed["Synthetic feed / Yahoo Finance"] --> Bot
+    API --> DB[("PostgreSQL (one schema)")]
 ```
 
 The bot lives in `backend/app/bot` and talks to the exchange only through two functions (`place_order`, `publish_reference_prices`) behind an `ExchangeExecution` class, the same path a user's order takes.
