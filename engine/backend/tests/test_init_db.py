@@ -2,8 +2,8 @@ from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db.init_db import DEFAULT_USER_EMAIL, init_db
-from app.models.user import User
+from app.db.init_db import DEFAULT_USER_EMAIL, DEFAULT_WATCHLIST, init_db
+from app.models.user import User, WatchlistItem
 
 
 def memory_engine():
@@ -26,4 +26,17 @@ def test_init_db_is_idempotent():
     engine = memory_engine()
     init_db(engine)
     init_db(engine)
-    assert sessionmaker(bind=engine)().query(User).count() == 1
+    session = sessionmaker(bind=engine)()
+    assert session.query(User).count() == 1
+    assert session.query(WatchlistItem).count() == len(DEFAULT_WATCHLIST)
+
+
+def test_default_watchlist_is_the_trading_universe_and_never_overrides_a_custom_one():
+    engine = memory_engine()
+    init_db(engine)
+    session = sessionmaker(bind=engine)()
+    assert {w.ticker for w in session.query(WatchlistItem)} == set(DEFAULT_WATCHLIST)
+    session.query(WatchlistItem).filter(WatchlistItem.ticker != "BTC-USD").delete()
+    session.commit()
+    init_db(engine)
+    assert [w.ticker for w in session.query(WatchlistItem)] == ["BTC-USD"]

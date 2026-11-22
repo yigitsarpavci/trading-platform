@@ -2,7 +2,7 @@
 
 * ``SimulatedExecution`` (default) fills instantly at the quoted price plus random slippage.
 * ``ExchangeExecution`` routes every entry and exit as an immediate-or-cancel limit order to the
-  Financial Analytics Dashboard's matching engine (https://github.com/yigitsarpavci/financial-analytics-dashboard).
+  exchange in this repository (../exchange).
   The engine also publishes its prices there each cycle as reference prices, which makes the
   exchange's market maker quote a bid and an ask around them; fills then come from a real order
   book with a real spread, partial fills and pre-trade cash/holding checks.

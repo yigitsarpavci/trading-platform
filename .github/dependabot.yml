@@ -1,0 +1,82 @@
+# Monthly dependency and GitHub Actions updates, grouped to keep PR noise low.
+# npm majors are migrations done deliberately, so only minor/patch updates arrive automatically.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/exchange/backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/exchange/frontend"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "docker"
+    directory: "/exchange/backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "docker"
+    directory: "/exchange/frontend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "pip"
+    directory: "/engine/backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/engine/frontend"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "docker"
+    directory: "/engine/backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "docker"
+    directory: "/engine/frontend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      all-updates:
+        patterns: ["*"]

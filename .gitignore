@@ -1,0 +1,9 @@
+.DS_Store
+.env
+*.db
+__pycache__/
+.pytest_cache/
+.coverage
+node_modules/
+.next/
+*.tsbuildinfo

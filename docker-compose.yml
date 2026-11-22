@@ -1,0 +1,66 @@
+# The whole platform: PostgreSQL, the exchange (API + web) and the trading engine (API + web).
+#   docker compose up --build
+# Exchange UI http://localhost:3001 · API docs http://localhost:8001/docs
+# Engine terminal http://localhost:3000 · API docs http://localhost:8000/docs
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform
+      POSTGRES_DB: exchange
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/create-engine-db.sql:/docker-entrypoint-initdb.d/create-engine-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  exchange-api:
+    build: ./exchange/backend
+    ports: ["8001:8000"]
+    environment:
+      DATABASE_URL: postgresql://platform:platform@db:5432/exchange
+      SECRET_KEY: ${EXCHANGE_SECRET_KEY:-dev-only-secret-change-me}
+      MARKET_OPERATOR_EMAILS: trading-engine@example.com
+      FRONTEND_CORS_ORIGINS: http://localhost:3001
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  exchange-web:
+    build:
+      context: ./exchange/frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8001
+    ports: ["3001:3000"]
+    depends_on: [exchange-api]
+
+  engine-api:
+    build: ./engine/backend
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql://platform:platform@db:5432/engine
+      EXECUTION_MODE: exchange
+      EXCHANGE_URL: http://exchange-api:8000
+      EXCHANGE_PASSWORD: ${ENGINE_EXCHANGE_PASSWORD:-dev-only-engine-password}
+    depends_on:
+      db:
+        condition: service_healthy
+      exchange-api:
+        condition: service_healthy
+
+  engine-web:
+    build: ./engine/frontend
+    ports: ["3000:3000"]
+    depends_on: [engine-api]
+
+volumes:
+  postgres_data:

@@ -1,10 +1,8 @@
-# Financial Analytics Dashboard
+# Exchange: Financial Analytics Dashboard
 
-[![Backend Pytest](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/backend-pytest.yml/badge.svg?branch=main)](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/backend-pytest.yml)
-[![Coverage](https://img.shields.io/badge/coverage-85%25%20services-yellowgreen)](#testing)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Part of the [trading platform](../README.md). Run everything from the repository root with `docker compose up --build`.
 
-A full-stack personal-finance and portfolio app: transaction tracking with a financial health score, a portfolio risk analyzer, a simulated exchange (limit-order book, settlement and a market maker) that the [trading simulator](https://github.com/yigitsarpavci/algorithmic-trading-simulator) can trade on, and an AI assistant that falls back to rule-based answers when no OpenAI key is configured. FastAPI and PostgreSQL on the backend, Next.js 16 on the frontend.
+A full-stack personal-finance and portfolio app: transaction tracking with a financial health score, a portfolio risk analyzer, a simulated exchange (limit-order book, settlement and a market maker) that the [trading engine](../engine) trades on, and an AI assistant that falls back to rule-based answers when no OpenAI key is configured. FastAPI and PostgreSQL on the backend, Next.js 16 on the frontend.
 
 > Educational project. Nothing here is financial advice.
 
@@ -13,12 +11,17 @@ A full-stack personal-finance and portfolio app: transaction tracking with a fin
 ## Quick Start
 
 ```bash
+# from the repository root: the whole platform
 docker compose up --build
-# UI: http://localhost:3000   API docs: http://localhost:8000/docs
-docker compose exec backend python app/db/seed.py   # demo data; sign in as test0@example.com / password123
+# UI: http://localhost:3001   API docs: http://localhost:8001/docs
+docker compose exec exchange-api python app/db/seed.py   # demo data; sign in as test0@example.com / password123
+
+# or only this app, locally
+cd backend && pip install -r requirements.txt && DATABASE_URL=sqlite:///./exchange.db uvicorn app.main:app --port 8001
+cd frontend && npm ci && NEXT_PUBLIC_API_URL=http://localhost:8001 npm run dev
 ```
 
-The backend image is also published to GHCR on every release tag.
+The API image is published to GHCR on every release tag (`ghcr.io/yigitsarpavci/trading-platform-exchange-api`).
 
 ---
 
@@ -122,7 +125,7 @@ Interactive docs at `/docs`. All routes are under `/api/v1`.
 
 ## Configuration
 
-Copy `.env.example` to `.env` for Docker Compose.
+For local runs, copy `.env.example` to `.env`; the root `docker-compose.yml` sets everything for the platform stack.
 
 | Variable | Required | Description |
 | :--- | :---: | :--- |
@@ -137,7 +140,7 @@ Copy `.env.example` to `.env` for Docker Compose.
 ## Testing
 
 ```bash
-docker compose exec backend pytest app/tests/
+cd backend && PYTHONPATH=. pytest app/tests/   # or: docker compose exec exchange-api pytest app/tests/
 ```
 
 36 pytest tests cover bcrypt hashing (salting, hashes created elsewhere, long and malformed inputs), JWT creation and validation, the monthly summary, category breakdown and health score, portfolio risk analysis, order matching (no match, full, partial, price-time priority), the exchange against a real SQLite database (cash and holding checks with reservations, settlement at the maker price, IOC remainders, self-trade prevention, cancellation, market-maker quotes and re-quotes, a round trip paying the spread, the operator-only price endpoint, the order endpoint's 400 on a failed check), the AI fallback paths, and startup creation of the ten tables plus the schema upgrade of older databases. Service-layer coverage is 85% and CI fails below 70%.
@@ -146,4 +149,4 @@ GitHub Actions runs the tests against a PostgreSQL service, ESLint plus a produc
 
 ## License
 
-[MIT](LICENSE) · Yiğit Sarp Avcı · [GitHub](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)
+[MIT](../LICENSE) · Yiğit Sarp Avcı · [GitHub](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)

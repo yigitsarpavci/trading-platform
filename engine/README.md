@@ -1,10 +1,8 @@
-# Algorithmic Trading Simulator
+# Engine: Algorithmic Trading Simulator
 
-[![CI](https://github.com/yigitsarpavci/algorithmic-trading-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yigitsarpavci/algorithmic-trading-simulator/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-65%25%20services-yellowgreen)](#testing)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Part of the [trading platform](../README.md). Run everything from the repository root with `docker compose up --build`.
 
-A paper-trading simulator: a FastAPI engine scans five crypto pairs every 2 seconds, scores z-score breakouts, sizes each position from its stop distance, manages exits with six risk rules, and streams everything over WebSockets to a Next.js terminal. Fills are simulated locally by default, or routed as real limit orders to the matching engine of the [Financial Analytics Dashboard](https://github.com/yigitsarpavci/financial-analytics-dashboard) (exchange mode). No real money or exchange is involved.
+A paper-trading simulator: a FastAPI engine scans five crypto pairs every 2 seconds, scores z-score breakouts, sizes each position from its stop distance, manages exits with six risk rules, and streams everything over WebSockets to a Next.js terminal. Fills are simulated locally by default, or routed as real limit orders to the [exchange](../exchange) in this repository (exchange mode). No real money or exchange is involved.
 
 > Educational project. It does not connect to an exchange or a brokerage account, and nothing here is financial advice.
 
@@ -21,7 +19,7 @@ DATABASE_URL=sqlite:///./alphatrigger.db uvicorn app.main:app --port 8000
 cd frontend && npm ci && npm run dev   # http://localhost:3000
 ```
 
-`docker-compose up --build` runs the same stack on PostgreSQL. API docs: <http://localhost:8000/docs>.
+From the repository root, `docker compose up --build` runs the engine in exchange mode on PostgreSQL next to the exchange. API docs: <http://localhost:8000/docs>.
 
 ---
 
@@ -90,7 +88,7 @@ The terminal receives `PRICE_BATCH_UPDATE`, `SIGNAL_GENERATED`, `PORTFOLIO_UPDAT
 
 ## Exchange Mode
 
-With `EXECUTION_MODE=exchange` the engine stops simulating fills and trades on the [Financial Analytics Dashboard](https://github.com/yigitsarpavci/financial-analytics-dashboard)'s limit-order book:
+With `EXECUTION_MODE=exchange` the engine stops simulating fills and trades on the [exchange](../exchange)'s limit-order book:
 
 ```mermaid
 sequenceDiagram
@@ -111,14 +109,14 @@ sequenceDiagram
 - Engine tickers map to exchange symbols by dropping the quote currency (`BTC-USD` → `BTC`).
 
 ```bash
-# terminal 1: the exchange (financial-analytics-dashboard/backend)
+# terminal 1: the exchange (exchange/backend)
 DATABASE_URL=sqlite:///./exchange.db MARKET_OPERATOR_EMAILS=trading-engine@example.com uvicorn app.main:app --port 8001
 # terminal 2: this engine
 DATABASE_URL=sqlite:///./alphatrigger.db EXECUTION_MODE=exchange EXCHANGE_URL=http://localhost:8001 \
   EXCHANGE_PASSWORD=choose-one uvicorn app.main:app --port 8000
 ```
 
-CI runs a round trip (publish, buy, sell, check the account is flat) against the exchange started from its own repository.
+CI runs a round trip (publish, buy, sell, check the account is flat) against the exchange in this repository.
 
 ---
 
@@ -183,7 +181,7 @@ pip install -r requirements.txt pytest pytest-cov
 PYTHONPATH=. python -m pytest tests -q --cov=app/services
 ```
 
-102 tests cover the indicators, entry scoring and its signal bands, the market-regime classifier, position sizing (risk-normalized notional, the 20% cap and the fallback), risk/reward validation, every exit rule against an in-memory database, the consecutive-loss and daily-loss guards, the exchange client against a fake exchange (registration, token refresh, IOC limits, rejections) and the engine's handling of missing, partial and full fills, startup table creation, the mock feed, and two strategies. `app/services` coverage is 65% (the paper-trading engine alone is 86%); CI fails below 55% and also runs ESLint and a production Next.js build.
+103 tests cover the indicators, entry scoring and its signal bands, the market-regime classifier, position sizing (risk-normalized notional, the 20% cap and the fallback), risk/reward validation, every exit rule against an in-memory database, the consecutive-loss and daily-loss guards, the exchange client against a fake exchange (registration, token refresh, IOC limits, rejections) and the engine's handling of missing, partial and full fills, startup table creation and the default watchlist, the mock feed, and two strategies. `app/services` coverage is 65% (the paper-trading engine alone is 86%); CI fails below 55% and also runs ESLint and a production Next.js build.
 
 ## Stack
 
@@ -191,4 +189,4 @@ FastAPI, SQLAlchemy 2, Pydantic 2, `asyncio`, httpx · Next.js 16, React 19, Tai
 
 ## License
 
-[MIT](LICENSE) · Yiğit Sarp Avcı · [GitHub](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)
+[MIT](../LICENSE) · Yiğit Sarp Avcı · [GitHub](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)
