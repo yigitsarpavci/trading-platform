@@ -3,7 +3,7 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/exchange/backend"
+    directory: "/backend"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 3
@@ -11,7 +11,7 @@ updates:
       all-updates:
         patterns: ["*"]
   - package-ecosystem: "npm"
-    directory: "/exchange/frontend"
+    directory: "/frontend"
     schedule:
       interval: "monthly"
     ignore:
@@ -22,7 +22,7 @@ updates:
       all-updates:
         patterns: ["*"]
   - package-ecosystem: "docker"
-    directory: "/exchange/backend"
+    directory: "/backend"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 3
@@ -30,42 +30,7 @@ updates:
       all-updates:
         patterns: ["*"]
   - package-ecosystem: "docker"
-    directory: "/exchange/frontend"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      all-updates:
-        patterns: ["*"]
-  - package-ecosystem: "pip"
-    directory: "/engine/backend"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      all-updates:
-        patterns: ["*"]
-  - package-ecosystem: "npm"
-    directory: "/engine/frontend"
-    schedule:
-      interval: "monthly"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    open-pull-requests-limit: 3
-    groups:
-      all-updates:
-        patterns: ["*"]
-  - package-ecosystem: "docker"
-    directory: "/engine/backend"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 3
-    groups:
-      all-updates:
-        patterns: ["*"]
-  - package-ecosystem: "docker"
-    directory: "/engine/frontend"
+    directory: "/frontend"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 3

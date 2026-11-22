@@ -4,6 +4,13 @@
 __pycache__/
 .pytest_cache/
 .coverage
+coverage/
 node_modules/
 .next/
 *.tsbuildinfo
+test-results/
+playwright-report/
+
+# Local archive docs (only screenshots are published)
+docs/*
+!docs/screenshots/

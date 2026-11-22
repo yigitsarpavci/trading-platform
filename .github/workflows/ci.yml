@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  exchange-backend:
-    name: Exchange API (pytest on PostgreSQL)
+  backend:
+    name: API (pytest on PostgreSQL)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -18,111 +18,62 @@ jobs:
         env:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: fintech_db
+          POSTGRES_DB: platform
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     defaults:
       run:
-        working-directory: exchange/backend
+        working-directory: backend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt pytest pytest-cov
-      - run: python -m pytest app/tests -q --cov=app/services --cov-report=term --cov-fail-under=70
+      - name: Exchange, finance and bot tests with a coverage gate
+        run: python -m pytest app -q --cov=app/services --cov=app/bot/services --cov-report=term --cov-fail-under=70
         env:
-          DATABASE_URL: postgresql://user:password@localhost:5432/fintech_db
+          DATABASE_URL: postgresql://user:password@localhost:5432/platform
           SECRET_KEY: ci-only-secret
+          BOT_ENABLED: "false"
           PYTHONPATH: .
 
-  engine-backend:
-    name: Engine (pytest)
+  frontend:
+    name: Web (lint + build)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: engine/backend
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-      - run: pip install -r requirements.txt pytest pytest-cov
-      - run: python -m pytest tests -q --cov=app/services --cov-report=term --cov-fail-under=55
-        env:
-          PYTHONPATH: .
-
-  integration:
-    name: Engine trades on the exchange (live round trip)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
-      - name: Start the exchange (SQLite)
-        working-directory: exchange/backend
-        env:
-          DATABASE_URL: sqlite:///./exchange.db
-          SECRET_KEY: ci-only-secret
-          MARKET_OPERATOR_EMAILS: trading-engine@example.com
-        run: |
-          pip install -r requirements.txt
-          nohup uvicorn app.main:app --port 8001 > exchange.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf localhost:8001/health && break; sleep 1; done
-      - name: Publish, buy and sell through the exchange
-        working-directory: engine/backend
-        env:
-          PYTHONPATH: .
-          EXCHANGE_LIVE_URL: http://localhost:8001
-        run: |
-          pip install -r requirements.txt pytest
-          python -m pytest tests/integration -q -rs
-      - if: failure()
-        run: cat exchange/backend/exchange.log
-
-  frontends:
-    name: ${{ matrix.app }} web (lint + build)
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [exchange, engine]
-    defaults:
-      run:
-        working-directory: ${{ matrix.app }}/frontend
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: ${{ matrix.app }}/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:8001
+          NEXT_PUBLIC_API_URL: http://localhost:8000
 
   docker:
-    name: Docker images (whole platform)
+    name: Docker (whole platform)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - run: docker compose build
-      - name: Smoke test - both API images import their application
-        run: |
-          docker compose run --rm --no-deps exchange-api python -c "import app.main; print('exchange ok')"
-          docker compose run --rm --no-deps engine-api python -c "import app.main; print('engine ok')"
-      - name: Start the whole stack and wait for the engine to quote on the exchange
+      - name: Start the stack and wait for the bot to quote on the exchange
         run: |
           docker compose up -d
           for i in $(seq 1 60); do
-            n=$(curl -sf localhost:8001/api/v1/market/prices | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
-            [ "$n" -ge 5 ] && echo "engine published $n prices" && break
+            n=$(curl -sf localhost:8000/api/v1/market/prices | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo 0)
+            [ "$n" -ge 5 ] && echo "bot published $n prices to the exchange" && break
             sleep 3
           done
           [ "$n" -ge 5 ]
-          curl -sf localhost:3000 >/dev/null && curl -sf localhost:3001 >/dev/null && echo "both web apps up"
+          curl -sf localhost:8000/api/v1/bot/settings/ >/dev/null && echo "bot API up"
+          curl -sf localhost:3000/login >/dev/null && echo "web app up"
       - if: failure()
         run: docker compose logs --tail=80
