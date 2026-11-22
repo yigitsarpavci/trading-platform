@@ -61,7 +61,7 @@ cd frontend && npm ci && npm run dev   # http://localhost:3000
 
 Most retail "algo trading" tools are either opaque black boxes or simplistic indicators that ignore execution costs, slippage, and risk management. Professional quantitative trading systems operate on principles that are rarely exposed to the educational community: statistical edge detection, volatility-normalized position sizing, and state-machine-based trade lifecycle management.
 
-**AlphaTrigger AI** demystifies this by building a fully transparent, autonomous HFT simulation engine where every decision — from entry scoring to trailing stop activation — is deterministic, auditable, and operates against live market data in real-time.
+**AlphaTrigger AI** demystifies this by building a fully transparent, autonomous paper-trading simulation engine where every decision — from entry scoring to trailing stop activation — is deterministic, auditable, and operates against live market data in real-time.
 
 ---
 
@@ -78,7 +78,7 @@ Most retail "algo trading" tools are either opaque black boxes or simplistic ind
 
 ## Key Features
 
-- **V8 Risk-First Autonomous Engine:** A fully autonomous trading orchestrator running on a 2-second HFT cycle. It scans a curated 5-coin crypto universe, scores entry opportunities on a 6-factor system, and executes paper trades with zero human intervention.
+- **V8 Risk-First Autonomous Engine:** A fully autonomous trading orchestrator running on a 2-second simulation cycle. It scans a curated 5-coin crypto universe, scores entry opportunities on a 6-factor system, and executes paper trades with zero human intervention.
 - **Z-Score Mean Reversion:** Entries are triggered by statistical deviation from a 120-tick rolling mean, ensuring trades are taken only at high-probability reversion points.
 - **Dynamic Volatility-Adjusted Sizing:** Stop-loss and take-profit levels are calculated from real-time price volatility (rate-of-change standard deviation), not fixed percentages.
 - **4-State Exit Machine:** A deterministic state machine manages trade exits through Hard Stop, No-Follow-Through, Break-Even Stop, Trailing Stop, Take Profit, and Time Stop.
@@ -101,7 +101,7 @@ Most retail "algo trading" tools are either opaque black boxes or simplistic ind
 - **Database:** SQLite (development) / PostgreSQL (production-ready via Docker)
 - **ORM:** SQLAlchemy 2.0, Pydantic v2
 - **Market Data:** yfinance (batch async fetching)
-- **Orchestration:** `asyncio` background task with 2-second HFT cycle
+- **Orchestration:** `asyncio` background task with a 2-second simulation cycle
 
 ### DevOps and Infrastructure
 - **Containerization:** Docker and Docker Compose
@@ -115,7 +115,7 @@ Most retail "algo trading" tools are either opaque black boxes or simplistic ind
 graph TD
     Client["Next.js Terminal UI"] -->|WebSocket + REST| API["FastAPI Backend"]
     
-    subgraph Engine["Autonomous HFT Engine (2s cycle)"]
+    subgraph Engine["Autonomous Paper-Trading Engine (2s cycle)"]
         MD["Market Data Layer<br/>(yfinance batch)"]
         ZS["Z-Score Calculator<br/>(120-tick buffer)"]
         ES["Entry Scoring<br/>(6-factor system)"]
