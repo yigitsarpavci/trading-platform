@@ -8,6 +8,7 @@ from app import models
 from app.db.session import SessionLocal, engine
 from app.db.init_db import init_db
 from app.services.paper_trading import paper_trading_service
+from app.services import execution as execution_module
 from app.core.config import settings
 from app.api.api_v1.api import api_router
 from app.services.settings_service import settings_service
@@ -130,6 +131,16 @@ async def trading_orchestrator():
                 continue
             
             print(f"Quotes received: {list(quotes.keys())}")
+
+            # Exchange mode: publish this cycle's prices so the exchange's market maker re-quotes
+            # around them before any order is sent. A failure here never stops the loop.
+            try:
+                await asyncio.wait_for(execution_module.execution.publish_prices({
+                    tk: qd["price"] for tk, qd in quotes.items()
+                    if isinstance(qd.get("price"), (int, float)) and qd["price"] > 0
+                }), timeout=3.0)
+            except Exception as e:
+                print(f"Publishing prices to the exchange failed: {e}")
             
             # Enrich quotes with dynamic change and RS from in-memory history before broadcasting
             btc_hist = _price_history.get("BTC-USD", [])

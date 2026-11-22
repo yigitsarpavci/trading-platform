@@ -9,3 +9,4 @@ alembic
 yfinance
 pandas
 email-validator
+httpx

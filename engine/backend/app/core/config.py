@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     # Market Data
     MARKET_DATA_PROVIDER: str = "mock" # mock or yfinance
 
+    # Execution: "simulated" fills locally with random slippage; "exchange" routes orders to the
+    # Financial Analytics Dashboard's matching engine (see app/services/execution.py).
+    EXECUTION_MODE: str = "simulated"
+    EXCHANGE_URL: str = "http://localhost:8001"
+    EXCHANGE_EMAIL: str = "trading-engine@example.com"
+    EXCHANGE_PASSWORD: str = ""
+    EXCHANGE_PRICE_TOLERANCE_BPS: float = 20.0  # how far past the quote an IOC order may fill
+
     class Config:
         env_file = ".env"
         case_sensitive = True

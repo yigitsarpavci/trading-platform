@@ -24,6 +24,39 @@ jobs:
         env:
           PYTHONPATH: .
 
+  exchange-integration:
+    name: Exchange integration (financial-analytics-dashboard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: yigitsarpavci/financial-analytics-dashboard
+          path: exchange
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Start the exchange (SQLite)
+        working-directory: exchange/backend
+        env:
+          DATABASE_URL: sqlite:///./exchange.db
+          SECRET_KEY: ci-only-secret
+          MARKET_OPERATOR_EMAILS: trading-engine@example.com
+        run: |
+          pip install -r requirements.txt
+          nohup uvicorn app.main:app --port 8001 > exchange.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:8001/health && break; sleep 1; done
+      - name: Round trip through the exchange
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+          EXCHANGE_LIVE_URL: http://localhost:8001
+        run: |
+          pip install -r requirements.txt pytest
+          python -m pytest tests/integration -q
+      - if: failure()
+        run: cat exchange/backend/exchange.log
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

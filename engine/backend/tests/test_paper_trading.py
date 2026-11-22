@@ -25,7 +25,9 @@ def db(monkeypatch):
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
     # Deterministic execution: no random slippage, fresh global risk state, default settings.
-    monkeypatch.setattr(pt.random, "random", lambda: 0.0)
+    from app.services import execution as ex
+    monkeypatch.setattr(ex.random, "random", lambda: 0.0)
+    monkeypatch.setattr(ex, "execution", ex.SimulatedExecution())
     bot_state_service.__init__()
     yield session
     session.close()

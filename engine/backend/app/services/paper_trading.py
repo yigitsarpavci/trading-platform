@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from app import models
 from app.services.market_data import market_data
 from app.services.settings_service import settings_service
+from app.services import execution as execution_module
 from datetime import datetime, timezone
-import random
 
 
 class PaperTradingService:
@@ -37,6 +37,19 @@ class PaperTradingService:
         notional = suggested if suggested > 0 else portfolio_value * fallback_fraction
         return min(notional, portfolio_value * PaperTradingService.MAX_POSITION_FRACTION)
 
+    @staticmethod
+    def _realize_partial_exit(db: Session, trade: models.PaperTrade, fill, conf) -> None:
+        """Book the P&L of the part that was sold and keep the rest of the position open."""
+        direction = -1.0 if trade.signal and trade.signal.signal_type == "SELL" else 1.0
+        raw = direction * (fill.price - trade.paper_entry_price) / trade.paper_entry_price
+        pnl = raw * trade.paper_entry_price * fill.quantity * conf.leverage - fill.price * fill.quantity * conf.commission_rate
+        user = db.query(models.User).filter(models.User.id == trade.user_id).first()
+        if user:
+            user.portfolio_value += pnl
+            db.add(user)
+        trade.quantity = round(trade.quantity - fill.quantity, 8)
+        db.add(trade)
+
     async def open_from_signal(self, db: Session, signal: models.Signal) -> models.PaperTrade:
         """Open a paper trade from a signal with realistic execution costs."""
         conf = settings_service.get_settings()
@@ -61,14 +74,20 @@ class PaperTradingService:
         if quantity <= 0:
             return None
 
-        # Entry slippage
-        # For BUY: costs slightly more. For SELL: receive slightly less.
-        if signal.signal_type == "SELL":
-            slippage_factor = 1.0 - (random.random() * conf.slippage_max)
-        else:
-            slippage_factor = 1.0 + (random.random() * conf.slippage_max)
-            
-        actual_entry = signal.entry_price * slippage_factor
+        # Fill: simulated slippage, or an IOC order on the exchange (which may fill partly or not at all)
+        execution = execution_module.execution
+        try:
+            if signal.signal_type == "SELL":
+                fill = await execution.sell(signal.ticker, quantity, signal.entry_price)
+            else:
+                fill = await execution.buy(signal.ticker, quantity, signal.entry_price)
+        except Exception as exc:  # exchange unreachable: skip this signal, keep the loop alive
+            print(f"Entry not executed for {signal.ticker}: {exc}")
+            return None
+        if fill is None or fill.quantity <= 0:
+            return None
+        quantity = round(fill.quantity, 8)
+        actual_entry = fill.price
 
         # Entry commission
         entry_fee = actual_entry * quantity * conf.commission_rate
@@ -230,13 +249,29 @@ class PaperTradingService:
 
         # === Execute Close ===
         if new_status:
-            # Closing slippage
-            if signal.signal_type == "SELL":
-                exit_slippage = 1.0 + (random.random() * conf.slippage_max)
-            else:
-                exit_slippage = 1.0 - (random.random() * conf.slippage_max)
-                
-            actual_exit = current_price * exit_slippage
+            execution = execution_module.execution
+            try:
+                # Exits are priced on a fresh quote: publish it first so the exchange's market
+                # maker quotes around the same price (a no-op in simulated mode).
+                await execution.publish_prices({trade.ticker: current_price})
+                if signal.signal_type == "SELL":
+                    fill = await execution.buy(trade.ticker, trade.quantity, current_price)
+                else:
+                    fill = await execution.sell(trade.ticker, trade.quantity, current_price)
+            except Exception as exc:
+                print(f"Exit not executed for {trade.ticker}: {exc}")
+                fill = None
+            if fill is None or fill.quantity <= 0:
+                # No liquidity within tolerance: keep the trade open and retry next cycle.
+                db.add(trade)
+                db.commit()
+                return
+            if fill.quantity < trade.quantity - 1e-9:
+                self._realize_partial_exit(db, trade, fill, conf)
+                db.commit()
+                return
+
+            actual_exit = fill.price
             exit_fee = actual_exit * trade.quantity * conf.commission_rate
 
             if signal.signal_type == "SELL":
