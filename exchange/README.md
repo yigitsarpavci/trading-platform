@@ -1,15 +1,12 @@
-# Financial Analytics Dashboard: Personal Finance & Portfolio Risk Platform
+# Financial Analytics Dashboard
 
-[![Security: CodeQL | Dependabot](https://img.shields.io/badge/Security-CodeQL%20%7C%20Dependabot%20%7C%20Secret%20scanning-success?logo=github)](https://github.com/yigitsarpavci/financial-analytics-dashboard/security)
-[![Coverage](https://img.shields.io/badge/coverage-71%25%20services-yellowgreen)](#devops-and-testing)
 [![Backend Pytest](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/backend-pytest.yml/badge.svg?branch=main)](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/backend-pytest.yml)
-[![Frontend Next.js Build](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/frontend-build.yml/badge.svg?branch=main)](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/frontend-build.yml)
-[![Docker Build](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/docker-build.yml/badge.svg)](https://github.com/yigitsarpavci/financial-analytics-dashboard/actions/workflows/docker-build.yml)
+[![Coverage](https://img.shields.io/badge/coverage-71%25%20services-yellowgreen)](#testing)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-An educational, full-stack financial technology application that integrates personal finance tracking, portfolio risk analysis, algorithmic financial health scoring, and an AI-powered financial assistant.
+A full-stack personal-finance and portfolio app: transaction tracking with a financial health score, a portfolio risk analyzer, a limit-order matching engine for a simulated exchange, and an AI assistant that falls back to rule-based answers when no OpenAI key is configured. FastAPI and PostgreSQL on the backend, Next.js 16 on the frontend.
 
-> **Disclaimer:** This project is built strictly for educational and portfolio demonstration purposes. None of the insights, risk profiles, or AI outputs constitute real financial or investment advice.
+> Educational project. Nothing here is financial advice.
 
 ---
 
@@ -20,6 +17,8 @@ docker compose up --build
 # UI: http://localhost:3000   API docs: http://localhost:8000/docs
 docker compose exec backend python app/db/seed.py   # demo data; sign in as test0@example.com / password123
 ```
+
+The backend image is also published to GHCR on every release tag.
 
 ---
 
@@ -38,96 +37,30 @@ Captured with the seeded demo data (50 users, 2,500+ transactions).
 
 ---
 
-## Table of Contents
-- [Problem Statement](#problem-statement)
-- [Key Features](#key-features)
-- [Tech Stack](#tech-stack)
-- [Architecture and Diagrams](#architecture-and-diagrams)
-- [Database Schema](#database-schema)
-- [API Overview](#api-overview)
-- [Local Setup Instructions](#local-setup-instructions)
-- [Deployment Guide](#deployment-guide)
-- [What I Learned](#what-i-learned)
-- [Architectural Roadmap](#architectural-roadmap-and-recent-enhancements)
+## What It Does
 
----
+- **Personal finance.** Income/expense tracking, category breakdowns, monthly cash flow, and a 0–100 health score: 50 base points, up to +30 for the savings rate (full marks at 20%), −20 when expenses exceed income.
+- **Portfolio risk.** Allocation by holding and asset class, a weighted risk score (Crypto 90, Stocks 60, ETFs 50, Bonds 30, Cash 10 …) mapped to Conservative / Balanced / Aggressive, and a diversification score (10 points per holding, −10 or −20 when the largest position exceeds 30% or 50%).
+- **Limit-order matching.** Orders match on **price-time priority**: a buy takes the cheapest resting sell at or below its limit, oldest first, and vice versa. Fills execute at the resting (maker) price, support partial fills across several counter-orders, and the order book endpoint aggregates open quantity per price level.
+- **AI assistant.** Builds a prompt from the user's cash flow and portfolio and asks `gpt-3.5-turbo`. With no key, or on any API error, it returns a deterministic rule-based answer instead. Every answer, including fallbacks, is stored in `ai_insights` as history.
+- **Auth.** Registration and login with bcrypt-hashed passwords and HS256 JWTs; every data endpoint is scoped to the signed-in user.
 
-## Problem Statement
-
-In modern personal finance and wealth management, data is often scattered across banking apps, spreadsheet trackers, and disparate budgeting tools. Furthermore, sophisticated portfolio insights (such as multi-asset concentration risk and weighted diversification scoring) are typically inaccessible in a unified, intuitive interface.
-
-**The FinTech Intelligence Platform** bridges this gap by offering a single, unified dashboard where users can track personal transactions, analyze multi-asset portfolio risks, monitor their algorithmic Financial Health Score, and receive actionable educational financial wellness insights powered by AI.
-
----
-
-## Business Value & Target Audience
-
-- **Target Audience:** Individual investors, tech professionals, and households seeking rigorous, data-driven personal financial analytics and automated risk assessment.
-- **Value Proposition:** Combines institutional-grade portfolio risk analysis (diversification scoring), algorithmic financial wellness metrics, and context-aware AI advisory into an intuitive, privacy-conscious full-stack dashboard.
-
-## Monetization Strategy (SaaS Model)
-
-- **Starter Tier (Free):** Transaction tracking, expense categorization, and basic portfolio risk analytics.
-- **Pro Tier ($14.99/mo):** Unlimited access to the AI Financial Assistant, deep multi-asset portfolio diversification modeling, and custom budget alerts.
-- **Enterprise API:** B2B licensing of portfolio risk and financial wellness scoring engines for employee benefits and financial planning platforms.
-
-## Key Features
-
-- **Personal Finance Dashboard:** Track income vs. expenses, analyze spending via category breakdown charts (Recharts), and monitor an algorithmic "Financial Health Score" based on savings rate and net cash flow.
-- **Portfolio Risk Analyzer:** Evaluates asset class allocations (Equities, Crypto, ETFs, Bonds, Cash), detects largest-holding concentration risks, and calculates a weighted Diversification Score (0–100).
-- **AI Financial Assistant:** Generates personalized, educational financial wellness insights based on real user data (spending habits, risk profile) via OpenAI's LLM with deterministic rule-based fallbacks.
-- **Full-Stack Relational Architecture:** Dockerized FastAPI backend with PostgreSQL, SQLAlchemy ORM, Alembic schema migrations, and comprehensive Pytest test suites.
-- **Secure Authentication:** JWT-based stateless authentication with `bcrypt` password hashing and protected endpoints.
-
----
-
-## Tech Stack
-
-### Frontend
-- **Framework:** Next.js 16 (App Router), React 19, Tailwind CSS 4
-- **Styling:** Tailwind CSS (Glassmorphism aesthetics)
-- **Data Visualization:** Recharts
-- **Icons:** Lucide-React
-
-### Backend
-- **Framework:** FastAPI (Python)
-- **Database:** PostgreSQL
-- **ORM and Migrations:** SQLAlchemy, Alembic
-- **AI Integration:** OpenAI API (`gpt-3.5-turbo`)
-
-### DevOps and Testing
-- **Containerization:** Docker and Docker Compose
-- **Testing:** Pytest (22 tests; 71% line coverage of the service layer, enforced at 70% in CI)
-
----
-
-## Architecture and Diagrams
+## Architecture
 
 ```mermaid
 graph TD
-    Client[Next.js Client UI] -->|REST API + JWT| API[FastAPI Backend]
-    
-    subapi_finance[Finance Service]
-    subapi_portfolio[Portfolio Service]
-    subapi_scoring[Health Scoring Engine]
-    subapi_ai[AI Assistant]
-
-    API --> subapi_finance
-    API --> subapi_portfolio
-    API --> subapi_scoring
-    API --> subapi_ai
-
-    subapi_finance --> DB[(PostgreSQL)]
-    subapi_portfolio --> DB
-    subapi_scoring --> DB
-    
-    subapi_ai --> LLM{OpenAI API}
-    subapi_ai -.Fallback.-> Rules[Rule-Based Engine]
+    UI["Next.js 16 client"] -->|REST + JWT| API["FastAPI"]
+    API --> FIN["finance service"]
+    API --> PORT["portfolio service"]
+    API --> TRADE["matching engine"]
+    API --> AI["AI service"]
+    FIN --> DB[(PostgreSQL)]
+    PORT --> DB
+    TRADE --> DB
+    AI --> DB
+    AI -->|key set| LLM{{"OpenAI"}}
+    AI -.->|no key / error| RULES["rule-based fallback"]
 ```
-
----
-
-## Database Schema
 
 Ten tables, created by the Alembic migration `ff5987b73cdb_initial_schema`:
 
@@ -147,180 +80,62 @@ erDiagram
     orders ||--o{ trades : sell_side
 ```
 
-- `users`: core identity (email, bcrypt `hashed_password`).
-- `transactions`, `budgets`: fiat cash-flow tracking (income/expense) and category budgets.
-- `assets`: global list of tradable entities (Crypto, Stocks, ETFs).
-- `portfolios`, `portfolio_holdings`: a user's portfolio and its asset balances with average buy prices.
-- `risk_analysis_results`: stored diversification/health scores per portfolio.
-- `orders`, `trades`: limit orders submitted to the trading simulator and the executed buy/sell matches.
-- `ai_insights`: cached responses generated by the LLM or the deterministic fallback engine.
+---
 
-### AI advisory flow
+## Design Decisions & Trade-offs
 
-```mermaid
-sequenceDiagram
-    participant UI as Next.js client
-    participant API as FastAPI /ai
-    participant SVC as AI service
-    participant LLM as OpenAI API
-    UI->>API: GET insight (JWT)
-    API->>SVC: build portfolio and cash-flow context
-    alt OPENAI_API_KEY configured
-        SVC->>LLM: context-aware prompt
-        LLM-->>SVC: advisory text
-    else no key, timeout or error
-        SVC->>SVC: deterministic rule-based fallback
-    end
-    SVC-->>API: insight (also cached in ai_insights)
-    API-->>UI: JSON response
-```
+- **Matching runs synchronously inside the request.** Placing an order matches it immediately and commits all resulting fills in one transaction, so a client gets its fills in the response. The cost is that matching throughput is bound to the web worker, which is fine for a simulator and wrong for an exchange.
+- **Maker-price execution.** Filling at the resting order's price rewards liquidity providers and is how most limit-order books behave; the incoming order can only get the same or a better price than its limit.
+- **Deterministic AI fallback.** The assistant must work without a key (CI, demos, outages), and the fallback keeps responses testable. Storing every answer gives a history view without a second call.
+- **Scores are transparent heuristics.** The health, risk and diversification scores are simple, documented formulas rather than a model, so a user can see why a number moved.
+- **Service layer separate from routes.** Routes stay thin; the scoring and matching logic lives in `app/services` and is what the tests and the coverage gate target.
+
+## Known Limitations
+
+- **No balance or holding checks on orders.** A user can place a buy without cash or a sell without the asset, and fills do not update portfolio holdings.
+- **No concurrency control in matching.** Two simultaneous orders on one asset can read the same resting order; a real engine would lock rows (`SELECT … FOR UPDATE`) or run a single matcher per asset.
+- **Limit orders only.** No market orders, cancellations or time-in-force.
+- **Risk uses cost basis.** Allocation is computed from average buy prices, not live market prices.
+- **The JWT lives in `localStorage`,** which is readable by any script on the page; an `HttpOnly` cookie would be safer.
+- **The AI model is fixed** to `gpt-3.5-turbo` in code.
 
 ---
 
-## API Overview
+## API
 
-The REST API is automatically documented via Swagger UI at `/docs`.
+Interactive docs at `/docs`. All routes are under `/api/v1`.
 
-- **`POST /api/v1/auth/login`**: Authenticates user and returns JWT.
-- **`GET /api/v1/finance/monthly-summary`**: Aggregates income/expenses.
-- **`GET /api/v1/portfolio/risk-analysis`**: Calculates diversification and risk metrics.
-- **`POST /api/v1/trading/orders`**: Submits an order to the matching engine.
-- **`GET /api/v1/trading/order-book`**: Retrieves live bids, asks, and spread.
-- **`POST /api/v1/ai/financial-summary`**: Requests an LLM prompt generation based on user data.
+| Area | Endpoints |
+| :--- | :--- |
+| Auth | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
+| Finance | `GET /finance/monthly-summary`, `/category-breakdown`, `/cash-flow`, `/financial-health-score` |
+| Transactions | `GET`, `POST /transactions/` |
+| Portfolio | `GET /portfolio/`, `POST /portfolio/assets`, `GET /portfolio/allocation`, `GET /portfolio/risk-analysis` |
+| Trading | `POST /trading/orders`, `GET /trading/orders`, `GET /trading/order-book`, `GET /trading/trades` |
+| AI | `POST /ai/financial-summary`, `/portfolio-risk-summary`, `/monthly-report`, `GET /ai/insights` |
 
----
+## Configuration
 
-## Local Setup Instructions
-
-### Prerequisites
-- Docker and Docker Compose installed.
-- (Optional) OpenAI API Key.
-
-### 1. Environment Variables
-Clone the repository, navigate to the root folder, and copy the environment template:
-```bash
-cp .env.example .env
-```
-Ensure your `.env` looks like this:
-```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=fintech_db
-DATABASE_URL=postgresql://postgres:postgres@db:5432/fintech_db
-SECRET_KEY=your_super_secret_key_change_in_production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-# Optional: For AI Assistant
-OPENAI_API_KEY=sk-your-openai-key
-```
-
-### 2. Run with Docker
-Spin up the database, backend, and frontend containers:
-```bash
-docker-compose up --build
-```
-> The frontend will be available at [http://localhost:3000](http://localhost:3000) and the backend API at [http://localhost:8000/docs](http://localhost:8000/docs).
-
-### 3. Seed the Database
-To experience the dashboard with realistic data, run the seeder (generates 50 users and 2000+ transactions):
-```bash
-docker-compose exec backend python app/db/seed.py
-```
-*You can now log in using `test0@example.com` and password `password123`.*
-
-### 4. Run the Test Suite
-The backend contains comprehensive Pytest coverage (auth, finance engine, matching engine).
-```bash
-docker-compose exec backend pytest app/tests/
-```
-
----
-
-
-### Environment Variables Configuration
+Copy `.env.example` to `.env` for Docker Compose.
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `SECRET_KEY` | ✅ | JWT signing key (HS256) |
-| `FRONTEND_CORS_ORIGINS` | ✅ | Allowed origins (e.g. Vercel domain) |
-| `OPENAI_API_KEY` | Optional | Required for the AI Financial Assistant |
-| `STRIPE_SECRET_KEY` | Optional | For processing Pro Tier subscriptions |
+| :--- | :---: | :--- |
+| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `SECRET_KEY` | yes | JWT signing key (`openssl rand -hex 32`) |
+| `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES` | no | JWT algorithm (HS256) and lifetime |
+| `FRONTEND_CORS_ORIGINS` | no | Comma-separated browser origins allowed by the API |
+| `OPENAI_API_KEY` | no | Enables LLM answers; without it the rule-based fallback is used |
 
-## Deployment Guide
+## Testing
 
-This project is structured for deployment to modern cloud platforms.
+```bash
+docker compose exec backend pytest app/tests/
+```
 
-### 1. Database (PostgreSQL)
-Use a managed PostgreSQL provider:
-- **[Supabase](https://supabase.com/)**, **[Neon](https://neon.tech/)**, or **[Railway](https://railway.app/)**.
-- Create a project, get the connection string (e.g., `postgresql://...`), and save it.
+22 pytest tests cover bcrypt hashing (salting, hashes created elsewhere, long and malformed inputs), JWT creation and validation, the monthly summary, category breakdown and health score, portfolio risk analysis, order matching (no match, full match, partial fill, price-time priority), the three AI fallback paths, and startup creation of the ten tables. Service-layer coverage is 71% and CI fails below 70%.
 
-### 2. Backend (FastAPI)
-Deploy the Python backend via Docker to a PaaS:
-- **[Render](https://render.com/)**, **[Railway](https://railway.app/)**, or **[Fly.io](https://fly.io/)**.
-- Connect your GitHub repo, select the `backend/` directory, and deploy as a Docker container.
-- **Environment Variables required in production:**
-  - `DATABASE_URL`: The string from Step 1.
-  - `SECRET_KEY`: A cryptographically secure random string (e.g., run `openssl rand -hex 32`).
-  - `FRONTEND_CORS_ORIGINS`: Your Vercel frontend domain (e.g., `https://fintech-app.vercel.app`).
-  - `OPENAI_API_KEY`: (Optional) Your OpenAI API key.
-
-### 3. Frontend (Next.js)
-Deploy the Next.js UI using Vercel (easiest for Next.js):
-- **[Vercel](https://vercel.com/)**
-- Connect your GitHub repo, select the `frontend/` directory. Vercel automatically detects Next.js.
-- **Environment Variables required in production:**
-  - `NEXT_PUBLIC_API_URL`: Your deployed backend URL + `/api/v1` (e.g., `https://fintech-api.onrender.com/api/v1`).
-
----
-
-
-### Production Deployment Checklist
-
-- [ ] **Database:** Provisioned managed PostgreSQL (e.g., Supabase, Neon)
-- [ ] **Backend (FastAPI):** Dockerized and deployed to Render or Fly.io
-- [ ] **Frontend (Next.js):** Deployed to Vercel with App Router optimizations
-- [ ] **Security:** JWT cookies enforced as `HttpOnly`, CORS restricted to production domain
-- [ ] **Environment:** All production API keys and secrets securely injected
-
-## What I Learned
-
-- **System Architecture:** How to decouple domain-specific financial calculations (portfolio diversification models, health score algorithms) from standard CRUD routes.
-- **Algorithm Design:** Formulating multi-asset weighted risk scores and non-linear concentration penalty algorithms to quantify portfolio diversification accurately.
-- **Resilience:** Designing a fallback mechanism for AI integrations to ensure the platform remains stable if the LLM API is unavailable.
-- **Frontend State:** Managing complex async data fetching streams (using `Promise.all`) in React to populate heavily analytical dashboard components without layout shifting.
-
----
-
-## Architectural Roadmap and Recent Enhancements
-
-### Recent Optimizations (Implemented)
-- **High-Performance Database Indexing:** Implemented B-Tree indexes on foreign keys (`user_id`, `asset_id`) and highly-queried categorical columns to ensure O(1) lookup performance and prevent full-table scans.
-- **Aggregated Analytics Caching:** Optimized category breakdown and monthly summary queries using SQLAlchemy aggregate functions, cutting query execution times significantly on high-volume user histories.
-
-### Future Roadmap
-- **Real-Time WebSockets:** Implement live WebSocket feeds for instant portfolio value recalculations upon market quote updates.
-- **Next.js Server Actions:** Migrate from standard React API polling to Next.js Server Actions for zero-JS-bundle data mutations.
-- **Advanced Auth Security:** Transition JWT storage from `localStorage` to strict `HttpOnly` cookies to mitigate XSS vulnerabilities.
-- **OAuth2 Authentication:** Add Google/GitHub authentication flows for seamless onboarding.
-- **Advanced Charting:** Introduce advanced charting libraries (e.g., TradingView Lightweight Charts) for interactive asset performance comparisons.
-
----
+GitHub Actions runs the tests against a PostgreSQL service, ESLint plus a production Next.js build, and a Docker build with an import smoke test. CodeQL and Dependabot run on the repository.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-## Author
-
-**Yiğit Sarp Avcı**  
-Computer Engineering Student @ Boğaziçi University  
-[GitHub Profile](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)
-
----
-
-*Developed by Yiğit Sarp Avcı*
+[MIT](LICENSE) · Yiğit Sarp Avcı · [GitHub](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)
