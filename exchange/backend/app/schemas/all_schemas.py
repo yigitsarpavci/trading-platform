@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-from typing import Optional, List
-from app.models.all_models import TransactionType, OrderSide, OrderStatus
+from typing import Dict, Optional, List
+from app.models.all_models import TransactionType, OrderSide, OrderStatus, TimeInForce
 
 # --- User ---
 class UserBase(BaseModel):
@@ -176,21 +176,24 @@ class AIInsightResponse(BaseModel):
 class OrderBase(BaseModel):
     asset_id: int
     side: OrderSide
-    price: float
-    quantity: float
+    price: float = Field(gt=0)
+    quantity: float = Field(gt=0)
 
 class OrderCreate(OrderBase):
-    pass
+    time_in_force: TimeInForce = TimeInForce.GTC
 
 class OrderRead(OrderBase):
     id: int
     user_id: int
     filled_quantity: float
     status: OrderStatus
+    time_in_force: TimeInForce = TimeInForce.GTC
     created_at: datetime
     updated_at: Optional[datetime] = None
     
     ticker_symbol: Optional[str] = None
+    # Volume-weighted price of the fills produced by this request (None when nothing filled).
+    avg_fill_price: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -208,3 +211,23 @@ class TradeRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Market data (operator-published reference prices) ---
+class ReferencePriceIn(BaseModel):
+    ticker_symbol: str = Field(min_length=1, max_length=20)
+    price: float = Field(gt=0)
+
+class ReferencePriceBatch(BaseModel):
+    prices: List[ReferencePriceIn] = Field(min_length=1, max_length=100)
+
+class MarketPriceRead(BaseModel):
+    asset_id: int
+    ticker_symbol: str
+    reference_price: Optional[float] = None
+    reference_price_at: Optional[datetime] = None
+
+class AccountRead(BaseModel):
+    cash_balance: float
+    reserved_cash: float
+    holdings: Dict[str, float]

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import transactions, portfolio, ai, auth, finance, trading
+from app.api.endpoints import transactions, portfolio, ai, auth, finance, trading, market
 
 api_router = APIRouter()
 
@@ -9,3 +9,4 @@ api_router.include_router(finance.router, prefix="/finance", tags=["Finance"])
 api_router.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI Assistant"])
 api_router.include_router(trading.router, prefix="/trading", tags=["Trading Simulator"])
+api_router.include_router(market.router, prefix="/market", tags=["Market Data"])

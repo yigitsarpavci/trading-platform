@@ -14,8 +14,20 @@ class Settings(BaseSettings):
     # AI
     OPENAI_API_KEY: str | None = None
 
+    # Simulated exchange
+    # Accounts allowed to publish reference prices (comma-separated emails), e.g. the trading engine.
+    MARKET_OPERATOR_EMAILS: str = ""
+    # Built-in market maker: quotes a bid and an ask around each reference price.
+    MARKET_MAKER_EMAIL: str = "market-maker@example.com"
+    MARKET_MAKER_SPREAD_BPS: float = 10.0          # full bid-ask spread, in basis points
+    MARKET_MAKER_QUOTE_NOTIONAL: float = 50_000.0  # size of each quote, in cash
+
     class Config:
         env_file = ".env"
+
+    @property
+    def market_operator_emails(self) -> set[str]:
+        return {e.strip().lower() for e in self.MARKET_OPERATOR_EMAILS.split(",") if e.strip()}
 
     @property
     def sqlalchemy_database_url(self) -> str:

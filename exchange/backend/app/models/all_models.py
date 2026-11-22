@@ -18,11 +18,17 @@ class OrderStatus(enum.Enum):
     CANCELED = "CANCELED"
     REJECTED = "REJECTED"
 
+class TimeInForce(enum.Enum):
+    GTC = "GTC"  # good till canceled: the unfilled remainder rests on the book
+    IOC = "IOC"  # immediate or cancel: the unfilled remainder is canceled right away
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    # Simulated exchange cash; buys are debited and sells credited at settlement.
+    cash_balance = Column(Float, nullable=False, default=100_000.0, server_default="100000")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -65,6 +71,9 @@ class Asset(Base):
     ticker_symbol = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     asset_class = Column(String, index=True, nullable=False) # e.g., Crypto, Stocks, Bonds
+    # Last price published by a market operator; the built-in market maker quotes around it.
+    reference_price = Column(Float, nullable=True)
+    reference_price_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -125,6 +134,7 @@ class Order(Base):
     quantity = Column(Float, nullable=False)
     filled_quantity = Column(Float, default=0.0, nullable=False)
     status = Column(Enum(OrderStatus), index=True, default=OrderStatus.OPEN, nullable=False)
+    time_in_force = Column(Enum(TimeInForce, native_enum=False, length=3), default=TimeInForce.GTC, server_default="GTC", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
