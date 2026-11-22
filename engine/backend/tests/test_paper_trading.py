@@ -138,8 +138,8 @@ def test_open_from_signal_sizes_by_risk_and_prevents_duplicates(db):
     db.commit()
 
     trade = run(pt.paper_trading_service.open_from_signal(db, signal))
-    # 1% risk per trade (default) of 1,000,000 at 2,000 per unit
-    assert trade.quantity == 5
+    # No suggested notional on the signal: fall back to 1% of 1,000,000 at 2,000 per unit
+    assert trade.quantity == pytest.approx(5.0)
     assert trade.status == "OPEN"
     assert trade.paper_entry_price == pytest.approx(2_000.0)
     assert trade.pnl_dollar < 0  # entry commission is charged immediately
@@ -156,3 +156,34 @@ def test_open_from_signal_rejects_a_non_positive_entry_price(db):
     db.add(signal)
     db.commit()
     assert run(pt.paper_trading_service.open_from_signal(db, signal)) is None
+
+
+def _signal(db, price, suggested):
+    user = models.User(email=f"u{price}{suggested}@example.com", portfolio_value=100_000.0)
+    db.add(user)
+    db.flush()
+    signal = models.Signal(user_id=user.id, ticker=f"T{price}-{suggested}", signal_type="BUY", entry_price=price,
+                           stop_loss=price * 0.99, take_profit=price * 1.02, suggested_amount=suggested)
+    db.add(signal)
+    db.commit()
+    return signal
+
+
+def test_open_from_signal_uses_the_risk_normalized_notional(db):
+    # 0.25% risk (250 USD) over a 1.25% stop -> 20,000 USD notional; BTC needs a fractional size
+    trade = run(pt.paper_trading_service.open_from_signal(db, _signal(db, 90_000.0, "20000")))
+    assert trade.quantity == pytest.approx(20_000 / 90_000, rel=1e-6)
+    assert 0 < trade.quantity < 1
+
+
+def test_open_from_signal_caps_the_notional_at_20_percent(db):
+    # A very tight stop implies a huge notional; it is capped at 20% of the 100,000 portfolio
+    trade = run(pt.paper_trading_service.open_from_signal(db, _signal(db, 100.0, "500000")))
+    assert trade.quantity == pytest.approx(200.0)
+
+
+@pytest.mark.parametrize("bad", [None, "", "12.5%", "-10", "0"])
+def test_open_from_signal_falls_back_when_the_suggestion_is_unusable(db, bad):
+    # 1% of 100,000 at 50 per unit
+    trade = run(pt.paper_trading_service.open_from_signal(db, _signal(db, 50.0, bad)))
+    assert trade.quantity == pytest.approx(20.0)

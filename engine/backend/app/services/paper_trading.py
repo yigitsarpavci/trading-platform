@@ -18,6 +18,25 @@ class PaperTradingService:
     - Removed "only close trailing if net pnl > 0" check
     """
 
+    # Upper bound on a single position, whatever the stop distance (a very tight stop would
+    # otherwise imply an enormous notional).
+    MAX_POSITION_FRACTION = 0.20
+
+    @staticmethod
+    def _position_notional(signal: models.Signal, portfolio_value: float, fallback_fraction: float) -> float:
+        """Notional to deploy for a signal.
+
+        The engine attaches a risk-normalized notional to each signal (fixed dollar risk divided by
+        the volatility-derived stop distance), so quieter markets get larger positions and volatile
+        ones smaller. Signals without a usable figure fall back to a fixed fraction of the portfolio.
+        """
+        try:
+            suggested = float(signal.suggested_amount)
+        except (TypeError, ValueError):
+            suggested = 0.0
+        notional = suggested if suggested > 0 else portfolio_value * fallback_fraction
+        return min(notional, portfolio_value * PaperTradingService.MAX_POSITION_FRACTION)
+
     async def open_from_signal(self, db: Session, signal: models.Signal) -> models.PaperTrade:
         """Open a paper trade from a signal with realistic execution costs."""
         conf = settings_service.get_settings()
@@ -37,8 +56,10 @@ class PaperTradingService:
         if signal.entry_price <= 0:
             return None  # Safety guard
 
-        position_dollars = portfolio_value * conf.risk_per_trade
-        quantity = max(1, int(position_dollars / signal.entry_price))
+        position_dollars = self._position_notional(signal, portfolio_value, conf.risk_per_trade)
+        quantity = round(position_dollars / signal.entry_price, 8)
+        if quantity <= 0:
+            return None
 
         # Entry slippage
         # For BUY: costs slightly more. For SELL: receive slightly less.

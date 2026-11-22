@@ -1,16 +1,12 @@
-# Algorithmic Trading Simulator: Quantitative Terminal & Execution Engine
+# Algorithmic Trading Simulator
 
-[![Security: CodeQL | Dependabot](https://img.shields.io/badge/Security-CodeQL%20%7C%20Dependabot%20%7C%20Secret%20scanning-success?logo=github)](https://github.com/yigitsarpavci/algorithmic-trading-simulator/security)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/yigitsarpavci/algorithmic-trading-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/yigitsarpavci/algorithmic-trading-simulator/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-60%25%20services-yellowgreen)](#testing)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
-[![Next.js](https://img.shields.io/badge/Next.js_16-black?logo=next.js&logoColor=white)](https://nextjs.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Coverage](https://img.shields.io/badge/coverage-61%25%20services-yellowgreen)](#testing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time algorithmic trading simulation engine with a WebSocket-driven terminal UI. AlphaTrigger executes a **V8 Risk-First** quantitative strategy: a statistically-driven Z-Score mean reversion model with dynamic volatility-adjusted position sizing, trailing stop management, and a multi-factor entry scoring engine operating on a 2-second simulation cycle.
+A paper-trading simulator: a FastAPI engine scans five crypto pairs every 2 seconds, scores z-score breakouts, sizes each position from its stop distance, manages exits with six risk rules, and streams everything over WebSockets to a Next.js terminal. No real orders are ever placed.
 
-> **Disclaimer:** This project is built strictly for educational and portfolio demonstration purposes. It does not execute real trades, connect to real brokerage accounts, or provide financial advice.
+> Educational project. It does not connect to an exchange or a brokerage account, and nothing here is financial advice.
 
 ---
 
@@ -25,6 +21,8 @@ DATABASE_URL=sqlite:///./alphatrigger.db uvicorn app.main:app --port 8000
 cd frontend && npm ci && npm run dev   # http://localhost:3000
 ```
 
+`docker-compose up --build` runs the same stack on PostgreSQL. API docs: <http://localhost:8000/docs>.
+
 ---
 
 ## Screenshots
@@ -38,256 +36,119 @@ cd frontend && npm ci && npm run dev   # http://localhost:3000
 | ![Risk control settings](docs/screenshots/settings.jpg) |  |
 | *Risk control settings* |  |
 
----
-
-> Screenshots were captured against the default synthetic (unbiased random-walk) market feed, so the trade results shown are demonstration data, not a performance claim.
+The screenshots use the default synthetic feed (an unbiased random walk), so the trade results are demonstration data, not a performance claim.
 
 ---
 
-## Table of Contents
-- [Problem Statement](#problem-statement)
-- [Key Features](#key-features)
-- [Tech Stack](#tech-stack)
-- [Architecture and Diagrams](#architecture-and-diagrams)
-- [Core Engines Deep Dive](#core-engines-deep-dive)
-- [API Overview](#api-overview)
-- [Local Setup Instructions](#local-setup-instructions)
-- [What I Learned](#what-i-learned)
-- [Future Roadmap](#future-roadmap)
-
----
-
-## Problem Statement
-
-Most retail "algo trading" tools are either opaque black boxes or simplistic indicators that ignore execution costs, slippage, and risk management. Professional quantitative trading systems operate on principles that are rarely exposed to the educational community: statistical edge detection, volatility-normalized position sizing, and state-machine-based trade lifecycle management.
-
-**AlphaTrigger AI** demystifies this by building a fully transparent, autonomous paper-trading simulation engine where every decision — from entry scoring to trailing stop activation — is deterministic, auditable, and operates against live market data in real-time.
-
----
-
-
-## Business Value & Target Audience
-
-- **Target Audience:** Quantitative (quant) traders and crypto enthusiasts who suffer from emotion-driven trading errors in highly volatile markets.
-- **Value Proposition:** An emotionless, fully automated trading bot utilizing Z-Score mean reversion algorithms and volatility-adjusted position sizing, ensuring strict adherence to risk management parameters.
-
-## Monetization Strategy
-
-- **Freemium:** Free access to historical backtesting and paper trading simulation.
-- **Premium ($29.99/mo):** Direct API integration with real exchanges (Binance, Alpaca) for live trade execution, plus sub-second WebSocket market data access.
-
-## Key Features
-
-- **V8 Risk-First Autonomous Engine:** A fully autonomous trading orchestrator running on a 2-second simulation cycle. It scans a curated 5-coin crypto universe, scores entry opportunities on a 6-factor system, and executes paper trades with zero human intervention.
-- **Z-Score Mean Reversion:** Entries are triggered by statistical deviation from a 120-tick rolling mean, ensuring trades are taken only at high-probability reversion points.
-- **Dynamic Volatility-Adjusted Sizing:** Stop-loss and take-profit levels are calculated from real-time price volatility (rate-of-change standard deviation), not fixed percentages.
-- **4-State Exit Machine:** A deterministic state machine manages trade exits through Hard Stop, No-Follow-Through, Break-Even Stop, Trailing Stop, Take Profit, and Time Stop.
-- **Real-Time WebSocket Terminal:** A premium dark-mode dashboard with live price streaming, active position tracking, execution tape, and performance analytics — all driven by sub-second WebSocket broadcasts.
-- **Realistic Execution Simulation:** Every paper trade includes randomized slippage, entry/exit commission fees, and leveraged PnL calculations.
-- **Dynamic Watchlist Management:** Add/remove assets with live price, change%, Relative Strength, and signal data streamed via WebSocket.
-
----
-
-## Tech Stack
-
-### Frontend
-- **Framework:** Next.js 16 (App Router), React 19, Tailwind CSS 4
-- **Styling:** Custom CSS Design System (Dark Terminal Aesthetic)
-- **Real-Time:** Native WebSocket client with auto-reconnect and exponential backoff
-- **Icons:** Lucide-React
-
-### Backend
-- **Framework:** FastAPI (Python 3.11+)
-- **Database:** SQLite (development) / PostgreSQL (production-ready via Docker)
-- **ORM:** SQLAlchemy 2.0, Pydantic v2
-- **Market Data:** yfinance (batch async fetching)
-- **Orchestration:** `asyncio` background task with a 2-second simulation cycle
-
-### DevOps and Infrastructure
-- **Containerization:** Docker and Docker Compose
-- **Data Pipeline:** In-memory ring buffers (120-tick) for statistical computation
-
----
-
-## Architecture and Diagrams
+## How It Works
 
 ```mermaid
-graph TD
-    Client["Next.js Terminal UI"] -->|WebSocket + REST| API["FastAPI Backend"]
-    
-    subgraph Engine["Autonomous Paper-Trading Engine (2s cycle)"]
-        MD["Market Data Layer<br/>(yfinance batch)"]
-        ZS["Z-Score Calculator<br/>(120-tick buffer)"]
-        ES["Entry Scoring<br/>(6-factor system)"]
-        PT["Paper Trading<br/>(4-state exit FSM)"]
-        RS["Risk Sizing<br/>(Volatility-adjusted)"]
-    end
-
-    API --> Engine
-    MD --> ZS --> ES --> RS --> PT
-    PT --> DB[(SQLite / PostgreSQL)]
-    
-    API -->|PRICE_BATCH_UPDATE| Client
-    API -->|SIGNAL_GENERATED| Client
-    API -->|PORTFOLIO_UPDATE| Client
+graph LR
+    Feed["Market data<br/>(mock random walk or yfinance)"] --> Buf["120-tick buffer<br/>per ticker"]
+    Buf --> Score["Entry score<br/>(threshold 4)"]
+    Score --> Size["Sizing from<br/>stop distance"]
+    Size --> Trade["Paper trade<br/>(slippage + fees)"]
+    Trade --> Exit["6 exit rules"]
+    Trade --> DB[(SQLite / PostgreSQL)]
+    Exit --> DB
+    Trade -. WebSocket .-> UI["Next.js terminal"]
 ```
+
+Every 2 seconds the engine (an `asyncio` task started with the API) runs one cycle:
+
+1. **Buffer.** Each quote is appended to a 120-tick in-memory buffer per ticker. A ticker needs 30 ticks before it can trade.
+2. **Score.** A long entry needs at least 4 points:
+
+   | Rule | Points |
+   | :--- | :---: |
+   | Price more than 1.5σ above the buffer mean | +1 |
+   | Price more than 2.5σ above the mean | +1 |
+   | Last two ticks rising | +1 |
+   | Buffer range above 0.03% (market not flat) | +1 |
+   | BTC rate of change ≥ -0.01% | +1 |
+   | Volume up by more than 10,000 since the last tick | +1 |
+   | A loss on this ticker in the last 15 minutes | -2 |
+
+3. **Size.** Volatility is the standard deviation of tick-to-tick returns. The stop is `max(0.8%, 3 × volatility)` below entry and the target is twice that distance (1:2 risk/reward). The position risks 0.25% of the portfolio, so its notional is `0.25% × portfolio / stop%`: calmer markets get larger positions, volatile ones smaller. One position is capped at 20% of the portfolio, and quantities are fractional.
+4. **Fill.** Entries and exits pay random slippage (up to 0.02%) and a 0.04% commission. P&L is computed at 5× leverage.
+5. **Exit.** Open trades are re-priced every cycle and closed by the first rule that fires:
+
+   | Rule | Fires when |
+   | :--- | :--- |
+   | Hard stop | price reaches the stop |
+   | No follow-through | 45 s old and the best excursion is still under 0.1% |
+   | Break-even stop | the trade reached +0.5R, then fell back to ≤ 0 |
+   | Trailing stop | the trade reached +0.8R, then gave back more than 0.4R |
+   | Target | price reaches the target |
+   | Time stop | 300 s old |
+
+   A session-level guard pauses trading after 5 consecutive losses or a daily loss limit.
+
+The terminal receives `PRICE_BATCH_UPDATE`, `SIGNAL_GENERATED`, `PORTFOLIO_UPDATE` and `SYNC_TRIGGER` events and reconnects with a capped backoff if the socket drops.
 
 ---
 
-## Core Engines Deep Dive
+## Design Decisions & Trade-offs
 
-### 1. V8 Entry Scoring System (6-Factor)
+- **Fixed dollar risk, not fixed position size.** Sizing from the stop distance keeps the loss at the stop roughly constant across BTC and a small-cap coin. The 20% cap exists because a very tight stop would otherwise imply an enormous position.
+- **Exit rules over a single take-profit.** Short-horizon signals decay fast. The no-follow-through and time stops close trades that never move, instead of letting them drift into the hard stop.
+- **In-process loop and in-memory state.** The engine, the price buffers and the WebSocket connection list live in the API process. That keeps the project to one service with no broker or cache to run, at the cost of horizontal scaling (see below).
+- **Unbiased mock feed by default.** The default feed is a random walk with no drift (seedable for tests), so the engine can be demoed offline and a "profitable" result cannot come from a biased generator. A feed with momentum earlier produced an unrealistic 92% win rate and was removed.
+- **SQLite for development, PostgreSQL in Docker.** Both go through SQLAlchemy; tables are created on startup.
 
-Every potential entry is scored on a 0–6 scale. A minimum of **4 points** is required to trigger a trade:
+## Known Limitations
 
-| Factor | Condition | Points |
-| :--- | :--- | :---: |
-| **Z-Score Strength** | Price > 1.5σ from 120-tick mean | +1 |
-| **Extreme Z-Score** | Price > 2.5σ from mean | +1 |
-| **Momentum Confirmation** | Last 2 ticks show upward direction | +1 |
-| **Volatility/Range** | Market not flat (> 0.03% range) | +1 |
-| **BTC Leader Confirmation** | BTC rate-of-change ≥ -0.01% | +1 |
-| **Volume Spike** | Volume delta > 10,000 units vs previous tick | +1 |
-| **Loss Penalty** | Recent losses on this ticker | -1 to -3 |
-
-### 2. 4-State Exit Machine
-
-```
-OPEN → [Hard Stop Hit?] → CLOSED_LOSS
-     → [No movement in 45s + MFE < 0.1%?] → CLOSED (NO_FOLLOW_THROUGH)  
-     → [MFE ≥ 0.5R but PnL ≤ 0?] → CLOSED (Break-Even Stop)
-     → [MFE ≥ 0.8R, drawdown > 0.4R?] → CLOSED (Trailing Stop)
-     → [Price hits TP?] → CLOSED_WIN (Target Hit)
-     → [Age ≥ 300s?] → CLOSED_TIMEOUT (Time Stop)
-```
-
-### 3. Risk-Normalized Position Sizing
-
-```
-Dynamic SL% = max(0.8%, Volatility × 3.0)
-Dynamic TP% = SL% × 2.0   (1:2 Risk/Reward)
-Risk USD    = Portfolio × 0.25%
-Notional    = Risk USD / SL%
-```
+- **Not a backtester.** Results come from a live simulation of the current feed. There is no historical replay, so strategy changes cannot be compared on the same data.
+- **Exits are checked every 2 seconds** at the current price, so a stop can fill past its level by however far the price moved within one cycle.
+- **State resets on restart.** Price buffers, loss penalties and the consecutive-loss guard are in memory.
+- **Single process.** Running two API workers would run two engines and split WebSocket clients between them.
+- **Long-only.** The live engine only opens BUY trades. The `strategies/` package (VWAP pullback, opening-range breakout, consolidation breakout, 20-DMA pullback, crypto momentum) feeds the signals API, not the trading loop.
+- **No schema migrations.** Tables come from `create_all`; changing a model on an existing database needs a manual migration.
+- **yfinance quotes are delayed** and rate-limited; the mock feed is the reliable default.
 
 ---
 
-## API Overview
+## API
 
-The REST API is documented via Swagger UI at `/docs`.
+Interactive docs at `/docs`.
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/watchlist/` | Retrieve all watchlist items |
-| `POST` | `/api/v1/watchlist/` | Add a ticker to the watchlist |
-| `DELETE` | `/api/v1/watchlist/{id}` | Remove a ticker from watchlist |
-| `GET` | `/api/v1/paper-trades/` | List paper trades (last 100) |
-| `GET` | `/api/v1/paper-trades/summary` | Aggregate performance metrics |
-| `GET` | `/api/v1/user/portfolio` | Current portfolio value and liquidity |
-| `GET` | `/api/v1/signals/` | List generated signals |
-| `GET` | `/api/v1/settings/` | Current engine configuration |
-| `WS` | `/api/v1/ws/` | Real-time WebSocket stream |
+| `GET` / `POST` | `/api/v1/watchlist/` | List or add watchlist tickers |
+| `DELETE` | `/api/v1/watchlist/{id}` | Remove a ticker |
+| `GET` | `/api/v1/paper-trades/` | Last 100 paper trades |
+| `GET` | `/api/v1/paper-trades/summary` | Win rate, P&L and trade counts |
+| `GET` | `/api/v1/user/portfolio` | Portfolio value and liquidity |
+| `GET` | `/api/v1/signals/` | Generated signals |
+| `GET` | `/api/v1/settings/` | Engine configuration |
+| `WS` | `/api/v1/ws/` | Live event stream |
 
-### WebSocket Event Types
-- `PRICE_BATCH_UPDATE` — Live price/volume/change/RS for all watchlist tickers
-- `SIGNAL_GENERATED` — New trade signal with entry, SL, TP, and score breakdown
-- `PORTFOLIO_UPDATE` — Net liquidity, unrealized PnL, active position count
+## Configuration
 
----
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | PostgreSQL from `POSTGRES_*` | Any SQLAlchemy URL, e.g. `sqlite:///./alphatrigger.db` |
+| `POSTGRES_SERVER` / `_USER` / `_PASSWORD` / `_DB` | `localhost` / `user` / `password` / `alphatrigger` | Used when `DATABASE_URL` is not set |
+| `FRONTEND_CORS_ORIGINS` | `localhost:3000` | Comma-separated browser origins allowed by the API |
+| `MARKET_DATA_PROVIDER` | `mock` | `mock` (synthetic random walk) or `yfinance` |
+| `OPENAI_API_KEY` | unset | Enables the optional AI trade explainer |
 
-## Local Setup Instructions
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-
-### 1. Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-### 2. Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The terminal will be live at [http://localhost:3000](http://localhost:3000) and the API at [http://localhost:8000/docs](http://localhost:8000/docs).
-
-### 3. Docker (Optional)
-```bash
-docker-compose up --build
-```
-
----
-
-
-### Environment Variables Configuration
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Optional | SQLAlchemy URL (e.g. `sqlite:///./alphatrigger.db`); falls back to PostgreSQL from `POSTGRES_*` |
-| `POSTGRES_SERVER` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Optional | Used when `DATABASE_URL` is not set |
-| `FRONTEND_CORS_ORIGINS` | Optional | Comma-separated browser origins allowed by the API (default: `localhost:3000`) |
-| `MARKET_DATA_PROVIDER` | Optional | `mock` (default, synthetic random-walk feed) or `yfinance` |
-| `OPENAI_API_KEY` | Optional | Enables the optional AI trade explainer |
-
-The frontend needs no environment variables; it derives the API/WebSocket address from the page host.
+The frontend needs no configuration; it derives the API and WebSocket address from the page host.
 
 ## Testing
 
 ```bash
 cd backend
-pip install -r requirements.txt pytest
+pip install -r requirements.txt pytest pytest-cov
 PYTHONPATH=. python -m pytest tests -q --cov=app/services
 ```
 
-The 85-test suite covers position sizing and risk/reward validation, the indicators, the 6-factor signal scoring engine and its signal bands, the market-regime classifier, the risk-first exit state machine (hard stop, no-follow-through, break-even, trailing stop, target, 300s time stop) against an in-memory database, the global loss/cooldown limits and two strategies. Coverage of `app/services` is 60% (the paper-trading engine alone is 87%) and CI fails below 55%. GitHub Actions runs it together with a production Next.js build on every push.
+92 tests cover the indicators, entry scoring and its signal bands, the market-regime classifier, position sizing (risk-normalized notional, the 20% cap and the fallback), risk/reward validation, every exit rule against an in-memory database, the consecutive-loss and daily-loss guards, startup table creation, the mock feed, and two strategies. `app/services` coverage is 61% (the paper-trading engine alone is 87%); CI fails below 55% and also runs ESLint and a production Next.js build.
 
-## What I Learned
+## Stack
 
-- **Real-Time Systems Architecture:** Designing a WebSocket-driven data pipeline that broadcasts market updates at sub-second intervals while maintaining state consistency across multiple connected clients.
-- **Statistical Trading Systems:** Implementing Z-Score mean reversion with rolling buffers, understanding why naive technical indicators fail without volatility normalization.
-- **State Machine Design:** Building a deterministic 4-state exit manager that handles edge cases (zero-value updates, stale connections, race conditions) without data loss.
-- **Risk Engineering:** Learning why fixed-percentage stop-losses fail in volatile markets and implementing volatility-adjusted position sizing that scales risk dynamically.
-- **Full-Stack Integration:** Coordinating a FastAPI async backend with a Next.js frontend through both REST and WebSocket channels, handling CORS, trailing-slash routing, and hydration mismatches.
-
----
-
-## Future Roadmap
-
-- [ ] **Multi-Exchange Connectors:** Integrate Binance/Coinbase WebSocket feeds for true sub-second price data.
-- [ ] **Backtesting Engine:** Run the V8 strategy against multi-year historical data with walk-forward optimization.
-- [ ] **Strategy Builder UI:** Allow users to define custom entry/exit rules and scoring weights via the terminal.
-- [ ] **Sentinel Alerts:** Push trade signals to Telegram/Discord/Slack via webhooks.
-- [ ] **Advanced Charting:** Integrate TradingView Lightweight Charts for interactive candlestick visualization.
-- [ ] **ML Signal Enhancement:** Layer a gradient-boosted model on top of the deterministic scoring system.
-
----
-
-## Legal Disclaimer
-
-AlphaTrigger AI is a **simulation-only** research and educational tool. It does not execute real trades, does not connect to real brokerage accounts, and does not constitute financial or investment advice. Market data may be delayed. Trading involves significant risk of loss.
-
----
+FastAPI, SQLAlchemy 2, Pydantic 2, `asyncio` · Next.js 16, React 19, Tailwind CSS 4 · SQLite / PostgreSQL · Docker Compose · GitHub Actions, CodeQL, Dependabot.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-## Author
-
-**Yiğit Sarp Avcı**  
-Computer Engineering Student @ Boğaziçi University  
-[GitHub Profile](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)
-
----
-
-*Developed by Yiğit Sarp Avcı*
+[MIT](LICENSE) · Yiğit Sarp Avcı · [GitHub](https://github.com/yigitsarpavci) · [LinkedIn](https://www.linkedin.com/in/yigitsarpavci)

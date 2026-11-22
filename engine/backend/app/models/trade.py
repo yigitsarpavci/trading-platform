@@ -12,7 +12,7 @@ class PaperTrade(Base):
     ticker = Column(String, index=True, nullable=False)
     paper_entry_price = Column(Float)
     paper_exit_price = Column(Float)
-    quantity = Column(Integer)
+    quantity = Column(Float)  # fractional crypto units
     status = Column(String, default="OPEN") # OPEN, CLOSED
     opened_at = Column(DateTime(timezone=True), server_default=func.now())
     closed_at = Column(DateTime(timezone=True), nullable=True)

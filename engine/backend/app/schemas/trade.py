@@ -5,7 +5,7 @@ from typing import Optional
 class PaperTradeBase(BaseModel):
     ticker: str
     paper_entry_price: Optional[float] = None
-    quantity: int
+    quantity: float
     status: str = "OPEN"
 
 class PaperTradeCreate(PaperTradeBase):
